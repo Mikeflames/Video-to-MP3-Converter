@@ -1,0 +1,5 @@
+CREATE USER 'auth_user'@'192.168.49.%' IDENTIFIED BY 'Auth123';
+GRANT ALL PRIVILEGES ON auth.* TO 'auth_user'@'192.168.49.%';
+CREATE USER 'auth_user'@'10.244.0.%' IDENTIFIED BY 'Auth123';
+GRANT ALL PRIVILEGES ON auth.* TO 'auth_user'@'10.244.0.%';
+FLUSH PRIVILEGES;

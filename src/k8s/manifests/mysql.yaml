@@ -1,0 +1,81 @@
+# k8s/mysql.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+type: Opaque
+data:
+  # echo -n 'rootpass' | base64
+  MYSQL_ROOT_PASSWORD: cm9vdHBhc3M=
+  # echo -n 'Auth123' | base64
+  MYSQL_PASSWORD: QXV0aDEyMw==
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: auth          # schema the auth service expects
+            - name: MYSQL_USER
+              value: auth_user
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_PASSWORD
+          ports:
+            - containerPort: 3306
+          # optional: mount your init.sql to pre‑seed tables
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-sql
+          configMap:
+            name: mysql-init
+
+---
+apiVersion: v1
+kind: ConfigMap            # optional – auto‑runs *.sql on first start
+metadata:
+  name: mysql-init
+data:
+  init.sql: |
+    -- create extra tables or seed data here
+    -- example:
+    CREATE TABLE IF NOT EXISTS users(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      email VARCHAR(255) UNIQUE,
+      password_hash VARCHAR(255)
+    );
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
